@@ -49,8 +49,8 @@
     breakable: false,
   )[
     #text(font: "Montserrat", weight: "bold", fill: ef-primary)[
-  📘 Definición#if numbered [ #context def-counter.display()]: 
-] 
+      #box(baseline: 20%, image("icons/book.svg", width: 12pt)) Definición#if numbered [ #context def-counter.display()]: 
+    ] 
     #text(font: "Libertinus Serif")[#body]
   ]
   v(10pt)
@@ -59,11 +59,13 @@
 // Algoritmo
 #let ef-algorithm(title, body) = block(
   fill: ef-accent,
+  stroke: (paint: ef-electric, thickness: 1pt),
   inset: 10pt,
   radius: 6pt,
   width: 100%,
 )[
-  #text(weight: "bold", fill: ef-primary)[Algoritmo: #title]
+  #text(font: "Montserrat", weight: "bold", fill: ef-primary)[
+    #box(baseline: 20%, image("icons/notebook.svg", width: 12pt))Algoritmo: #title]
   #v(0.5em)
   #body
 ]
@@ -94,7 +96,7 @@
     breakable: false,
   )[
     #text(font: "Montserrat", weight: "bold", fill: ef-primary)[
-    📐 Teorema#if numbered [ #context thm-counter.display()] (#title): 
+    #box(baseline: 20%, image("icons/delta.svg", width: 12pt)) Teorema#if numbered [ #context thm-counter.display()] (#title): 
   ] 
     #text(font: "Libertinus Serif")[#body]
   ]
@@ -113,7 +115,7 @@
     breakable: false,
   )[
     #text(font: "Montserrat", weight: "bold", fill: ef-primary)[
-  📌 Corolario: ] 
+  #box(baseline: 20%, image("icons/pin.svg", width: 12pt)) Corolario: ] 
     #text(font: "Libertinus Serif")[#body]
   ]
   v(10pt)
@@ -129,11 +131,19 @@
     radius: 8pt,
     width: 100%,
   )[
-    #text(font: "Montserrat", weight: "bold", fill: ef-primary)[ℹ️ Nota: ] 
+    #text(font: "Montserrat", weight: "bold", fill: ef-primary)[#box(baseline: 20%, image("icons/info.svg", width: 12pt)) Nota: ] 
     #text(font: "Libertinus Serif")[#body]
   ]
   v(10pt)
 }
+
+// Demostración
+#let ef-demostracion(body) = block(
+  inset: (left: 10pt),
+)[
+  #text(font: "Montserrat", weight: "bold", fill: ef-primary)[#box(baseline: 20%, image("icons/proof.svg", width: 12pt)) Demostración: ] 
+    #text(font: "Libertinus Serif")[#body]
+]
 
 // Ejemplo (con numeración opcional)
 #let ef-ejemplo(numbered: false, body) = {
@@ -150,7 +160,7 @@
     breakable: false,
   )[
     #text(font: "Montserrat", weight: "bold", fill: ef-primary)[
-    💡 Ejemplo#if numbered [ #context ej-counter.display()]: 
+    #box(baseline: 20%, image("icons/idea.svg", width: 12pt)) Ejemplo#if numbered [ #context ej-counter.display()]: 
   ] 
     #text(font: "Libertinus Serif")[#body]
   ]
@@ -332,18 +342,42 @@
     show heading.where(level: 2): set text(size: 11pt, weight: "bold")
     show heading: set block(below: 8pt, above: 12pt)
     
-    // Configuración para figuras
-    show figure: set text(9pt)
-    show figure: set block(below: 14pt, above: 14pt)
-    show figure.caption: it => {
-      set text(font: "Montserrat", size: 9pt, fill: ef-neutral-dark)
-      block(inset: (x: 8%))[
-        #text(weight: "bold")[Figura #it.counter.display():] #it.body
+    // FIGURAS (imágenes)
+    show figure.where(kind: image): it => {
+      block(below: 14pt, above: 14pt)[
+        // Contenido de la imagen
+        #it.body
+        
+        // Espacio entre imagen y caption
+        #v(8pt)
+        
+        // Caption personalizado
+        #block(inset: (x: 8%))[
+          #set text(font: "Montserrat", size: 9pt, fill: ef-neutral-dark)
+          #text(weight: "bold")[Figura #it.counter.display():] #it.caption.body
+        ]
+      ]
+    }
+
+    // TABLAS
+    show figure.where(kind: table): it => {
+      block(below: 14pt, above: 14pt)[
+        // Contenido de la tabla
+        #it.body
+        
+        // Espacio entre tabla y caption
+        #v(8pt)
+        
+        // Caption personalizado
+        #block(inset: (x: 8%))[
+          #set text(font: "Montserrat", size: 9pt, fill: ef-neutral-dark)
+          #text(weight: "bold")[Tabla #it.counter.display():] #it.caption.body
+        ]
       ]
     }
     
     // Strong en Montserrat para destacar
-    show strong: set text(font: "Montserrat", weight: 350)
+    //show strong: set text(font: "Montserrat", weight: 350)
     
     // Footer mejorado con línea separadora
     set page(footer: context[

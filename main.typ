@@ -6,7 +6,7 @@
 
 //#import "@preview/graceful-genetics:0.2.0" as graceful-genetics
 //#import "@preview/physica:0.9.3"
-#import "ef-theme.typ": template, ef-definicion, ef-teorema, ef-ejemplo, ef-corolario, ef-nota, ef-proposition, ef-algorithm
+#import "ef-theme.typ": template, ef-definicion, ef-teorema, ef-ejemplo, ef-corolario, ef-nota, ef-proposition, ef-algorithm, ef-primary, ef-paper-bg, ef-neutral-light, ef-electric, ef-demostracion
 
 #show: template.with(
   title: [Clasificación Binaria: Modelos Lineales vs.~Redes Neuronales],
@@ -42,16 +42,6 @@
 
 // ESTILOS PERSONALIZADOS
 // ==============================================================================
-
-
-
-// Demostración
-#let myproof(body) = block(
-  inset: (left: 10pt),
-)[
-  #text(style: "italic")[Demostración: ] #body #h(1fr) $square.stroked$
-]
-
 
 
 = Introducción
@@ -110,11 +100,11 @@ La *frontera de decisión* (decision boundary) es el conjunto de puntos donde el
 $ {bold(x) in RR^d : P(y=1|bold(x)) = 0.5} $
 
 #ef-teorema("Frontera Lineal")[
-  Para un clasificador lineal, la frontera de decisión es un hiperplano en $RR^d$ definido por $bold(w)^T bold(x) + b = 0$.
+  Para un clasificador lineal, la frontera de decisión es un hiperplano en $RR^d$ definido por $bold(w^T x + b = 0)$.
 ]
 
-#myproof[
-  Sea $f(bold(x)) = sigma(bold(w)^T bold(x) + b)$ donde $sigma$ es monótona. Entonces $P(y=1|bold(x)) = 0.5$ si y solo si $sigma(z) = 0.5$, lo cual ocurre cuando $z = 0$ para la función sigmoide. Por lo tanto, $bold(w)^T bold(x) + b = 0$ define un hiperplano.
+#ef-demostracion[
+  Sea $f(x) = sigma(w^T x + b)$ donde $sigma$ es monótona. Entonces $P(y=1|x) = 0.5$ si y solo si $sigma(z) = 0.5$, lo cual ocurre cuando $z = 0$ para la función sigmoide. Por lo tanto, $w^T x + b = 0$ define un hiperplano.
 ]
 
 == Separabilidad Lineal
@@ -122,7 +112,10 @@ $ {bold(x) in RR^d : P(y=1|bold(x)) = 0.5} $
 #ef-definicion[
   Un dataset es *linealmente separable* si existe un hiperplano que separa perfectamente las dos clases, es decir:
   
-  $ exists bold(w), b: forall i, space y_i = 1 arrow.r.double bold(w)^T bold(x)_i + b > 0 space "y" space y_i = 0 arrow.r.double bold(w)^T bold(x)_i + b < 0 $
+  $ exists bold(w), b: forall i, space cases(
+    bold(w)^T bold(x)_i + b > 0 quad &"si" y_i = 1,
+    bold(w)^T bold(x)_i + b < 0 quad &"si" y_i = 0
+  ) $
 ]
 
 La mayoría de problemas reales no son linealmente separables, lo que motiva el uso de modelos no-lineales.
@@ -222,7 +215,7 @@ donde:
 
 En notación matricial:
 
-$ bold(a)^((l)) = phi(bold(W)^((l)) bold(a)^((l-1)) + bold(b)^((l))) $ <eq:layer-matrix>
+$ bold(a^l = phi(W^l a^(l-1) + b^l)) $ <eq:layer-matrix>
 
 == Funciones de Activación
 
@@ -250,7 +243,7 @@ $ phi(z) = max(0, z) = cases(z quad & "si" z > 0, 0 quad & "si" z <= 0) $ <eq:re
 
 === Función Sigmoide
 
-$ phi(z) = 1/(1 + e^(-z)) $ <eq:sigmoid-activation>
+$ bold(phi(z) = 1/(1 + e^(-z))) $ <eq:sigmoid-activation>
 
 *Propiedades:*
 - Rango: $(0, 1)$
@@ -275,13 +268,13 @@ Este teorema establece que las redes neuronales con una sola capa oculta pueden 
 
 Para una red con $L$ capas ocultas, la predicción se calcula mediante:
 
-$ bold(a)^((0)) = bold(x) $ <eq:forward-prop-1>
+$ a^((0)) = x $ <eq:forward-prop-1>
 
-$ bold(a)^((l)) = phi(bold(W)^((l)) bold(a)^((l-1)) + bold(b)^((l))), quad l = 1, ..., L $ <eq:forward-prop-2>
+$ a^((l)) = phi(W^((l)) a^((l-1)) + b^((l))), quad l = 1, ..., L $ <eq:forward-prop-2>
 
-$ hat(y) = sigma(bold(w)^((L+1)T) bold(a)^((L)) + b^((L+1))) $ <eq:forward-prop-3>
+$ hat(y) = sigma(w^((L+1)T) a^((L)) + b^((L+1))) $ <eq:forward-prop-3>
 
-Este proceso se conoce como *forward propagation* (propagación hacia adelante).
+Este proceso se conoce como _forward propagation_ (propagación hacia adelante).
 
 == Número de Parámetros
 
@@ -307,31 +300,31 @@ donde $n_0 = d$ y $n_(L+1) = 1$.
 
 Para clasificación binaria con MLP, también se usa entropía cruzada binaria:
 
-$ cal(L)(bold(Theta)) = -1/n sum_(i=1)^n [y_i log(hat(y)_i) + (1-y_i)log(1-hat(y)_i)] $ <eq:loss-mlp>
+$ cal(L)(Theta) = -1/n sum_(i=1)^n [y_i log(hat(y)_i) + (1-y_i)log(1-hat(y)_i)] $ <eq:loss-mlp>
 
-donde $bold(Theta)$ representa todos los parámetros de la red.
+donde $Theta$ representa todos los parámetros de la red.
 
 == Descenso de Gradiente
 
-El objetivo es minimizar $cal(L)(bold(Theta))$ mediante:
+El objetivo es minimizar $cal(L)(Theta)$ mediante:
 
 $ bold(Theta)^((t+1)) = bold(Theta)^((t)) - eta nabla_(bold(Theta)) cal(L)(bold(Theta)^((t))) $ <eq:gradient-descent>
 
-donde $eta > 0$ es el *learning rate* (tasa de aprendizaje).
+donde $eta > 0$ es el _learning rate_ (tasa de aprendizaje).
 
 === Variantes de Descenso de Gradiente
 
 *1. Batch Gradient Descent:* Usa todo el dataset
 
-$ nabla_(bold(Theta)) cal(L) = 1/n sum_(i=1)^n nabla_(bold(Theta)) cal(L)_i $
+$ nabla_(Theta) cal(L) = 1/n sum_(i=1)^n nabla_(Theta) cal(L)_i $
 
 *2. Stochastic Gradient Descent (SGD):* Usa una observación
 
-$ nabla_(bold(Theta)) cal(L) approx nabla_(bold(Theta)) cal(L)_i $
+$ nabla_(Theta) cal(L) approx nabla_(Theta) cal(L)_i $
 
 *3. Mini-batch Gradient Descent:* Usa subconjuntos (típico: 16-256)
 
-$ nabla_(bold(Theta)) cal(L) approx 1/m sum_(i in cal(B)) nabla_(bold(Theta)) cal(L)_i $
+$ nabla_(Theta) cal(L) approx 1/m sum_(i in cal(B)) nabla_(Theta) cal(L)_i $
 
 == Backpropagation
 
@@ -340,22 +333,22 @@ El algoritmo de *backpropagation* (retropropagación) calcula eficientemente los
 === Algoritmo
 
 #ef-algorithm("Backpropagation")[
-  *Entrada:* Dataset $cal(D)$, red con parámetros $bold(Theta)$, learning rate $eta$
+  *Entrada:* Dataset $cal(D)$, red con parámetros $Theta$, learning rate $eta$
   
-  *Para* cada época:
+  Para cada época:
   
-  1. *Forward pass:* Calcular $hat(y)_i$ para cada $bold(x)_i$
+  1. *Forward pass:* Calcular $hat(y)_i$ para cada $x_i$
   
   2. *Calcular pérdida:* #h(0.5em) $cal(L) = -1/n sum_i [y_i log hat(y)_i + (1-y_i)log(1-hat(y)_i)]$
   
   3. *Backward pass:* Para $l = L+1, ..., 1$:
-     - Calcular $delta^((l)) = (partial cal(L))/(partial bold(z)^((l)))$
-     - Calcular $nabla_(bold(W)^((l))) cal(L) = delta^((l)) (bold(a)^((l-1)))^T$
-     - Calcular $nabla_(bold(b)^((l))) cal(L) = delta^((l))$
+     - Calcular $delta^((l)) = (partial cal(L))/(partial z^((l)))$
+     - Calcular $nabla_(W^((l))) cal(L) = delta^((l)) (a^((l-1)))^T$
+     - Calcular $nabla_(b^((l))) cal(L) = delta^((l))$
   
-  4. *Actualizar:* $bold(Theta) arrow.l bold(Theta) - eta nabla_(bold(Theta)) cal(L)$
+  4. *Actualizar:* $Theta arrow.l Theta - eta nabla_(Theta) cal(L)$
   
-  *Retornar:* Parámetros optimizados $bold(Theta)$
+  *Retornar:* Parámetros optimizados $Theta$
 ]
 
 === Cálculo del Error en Capa de Salida
@@ -370,7 +363,7 @@ Esta forma simple resulta de la combinación de entropía cruzada con sigmoide.
 
 Para capas ocultas:
 
-$ delta^((l)) = ((bold(W)^((l+1)))^T delta^((l+1))) dot.o phi'(bold(z)^((l))) $ <eq:hidden-error>
+$ delta^((l)) = ((W^((l+1)))^T delta^((l+1))) dot.o phi'(z^((l))) $ <eq:hidden-error>
 
 donde $dot.o$ denota producto elemento-wise (Hadamard).
 
@@ -458,21 +451,37 @@ $ "AUC" = integral_0^1 "TPR"("FPR") dif("FPR") $ <eq:auc>
 == Análisis Comparativo
 
 #figure(
-  table(
-    columns: 3,
-    align: (left, center, center),
-    table.header([Aspecto], [Reg. Logística], [MLP]),
-    [Complejidad], [Baja], [Alta],
-    [Parámetros], [$d + 1$], [Cientos-Miles],
-    [Frontera], [Lineal], [No-lineal],
-    [Interpretabilidad], [Alta], [Baja],
-    [Velocidad train], [~ms], [~segundos],
-    [Velocidad inference], [Muy rápida], [Rápida],
-    [Requisitos datos], [Pocos], [Muchos],
-    [Overfitting], [Menos propenso], [Más propenso],
+  block(
+    width: 100%,
+    table(
+      columns: 3,
+      align: (left, center, center),
+      stroke: (x, y) => (
+        top: if y == 0 { 2pt + ef-primary } else { 0.5pt + ef-neutral-light },
+        bottom: 0.5pt + ef-neutral-light,
+      ),
+      fill: (x, y) => if y == 0 { ef-primary } else if calc.odd(y) { ef-paper-bg } else { white },
+      inset: 10pt,
+      
+      table.header(
+        [#text(fill: white, weight: "bold")[Aspecto]], 
+        [#text(fill: white, weight: "bold")[Reg. Logística]], 
+        [#text(fill: white, weight: "bold")[MLP]]
+      ),
+      
+      [Complejidad], [Baja], [Alta],
+      [Parámetros], [$d + 1$], [Cientos-Miles],
+      [Frontera], [Lineal], [No-lineal],
+      [Interpretabilidad], [Alta], [Baja],
+      [Velocidad train], [~ms], [~segundos],
+      [Velocidad inference], [Muy rápida], [Rápida],
+      [Requisitos datos], [Pocos], [Muchos],
+      [Overfitting], [Menos propenso], [Más propenso],
+    )
   ),
-  caption: [Comparación entre Regresión Logística y MLP]
-)
+  caption: [Comparación entre Regresión Logística y MLP],
+  kind: table
+) <tab:comparacion>
 
 == El Problema de Círculos Concéntricos
 
@@ -490,7 +499,7 @@ donde $r_1 < r_2$ son los radios interior y exterior.
   No existe $bold(w) in RR^2$ y $b in RR$ tal que la frontera lineal $bold(w)^T bold(x) + b = 0$ separe correctamente el dataset de círculos concéntricos.
 ]
 
-#myproof[
+#ef-demostracion[
   Supongamos que existe tal hiperplano. Entonces puntos en el círculo interior satisfacen $bold(w)^T bold(x) + b > 0$. Pero el círculo interior está completamente rodeado por el exterior, por lo que cualquier línea que pase por el origen cruzará ambas clases. Por simetría radial, no existe orientación de línea que separe las clases.
 ]
 
@@ -538,7 +547,7 @@ Para prevenir overfitting:
 
 *L2 Regularization (Weight Decay):*
 
-$ cal(L)_("total") = cal(L)_("data") + lambda sum_(l=1)^L ||bold(W)^((l))||_F^2 $ <eq:l2-reg>
+$ cal(L)_("total") = cal(L)_("data") + lambda sum_(l=1)^L ||W^((l))||_F^2 $ <eq:l2-reg>
 
 *Dropout:*
 
