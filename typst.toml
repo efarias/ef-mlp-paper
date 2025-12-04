@@ -1,0 +1,4 @@
+[package]
+name = "ef-mlp-paper"
+version = "0.1.0"
+entry = "main-ef-theme.typ"
