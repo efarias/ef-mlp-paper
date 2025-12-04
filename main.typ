@@ -596,6 +596,9 @@ La elección entre Regresión Logística y MLP no se trata de cuál es "mejor" e
 
 Este principio se extiende más allá de Machine Learning: en ingeniería y ciencia, la sofisticación de la solución debe coincidir con la complejidad del problema.
 
+En términos formales, este criterio se alinea con el *principio de parsimonia* u *Occam’s razor* en Machine Learning: entre dos modelos capaces de explicar adecuadamente los datos, se prefiere aquel que es más simple. Para problemas linealmente separables, la Regresión Logística constituye una solución parsimoniosa: ofrece buena capacidad de generalización con menor complejidad computacional y conceptual. En cambio, para fronteras intrínsecamente no lineales —como el caso de los círculos concéntricos— la parsimonia no implica insistir en modelos lineales, sino elegir la clase de modelo más simple *dentro de la familia adecuada*, donde arquitecturas MLP poco profundas pueden capturar la geometría del problema sin recurrir a redes excesivamente profundas o sobreparametrizadas.
+
+
 //#pagebreak()
 
 = Referencias
