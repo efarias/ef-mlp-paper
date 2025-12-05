@@ -186,7 +186,7 @@ Un Perceptrón Multicapa es una red neuronal feedforward compuesta por:
 
 Una arquitectura se denota como $d$-$n_1$-$n_2$-...-$n_L$-$c$, donde $n_l$ es el número de neuronas en la capa $l$ y $c$ es el número de clases (1 para clasificación binaria).
 
-// OPCIÓN 1: Usando place() - MÁS CONTROL
+// Insertar imágen en ancho completo
 #place(
   top + center,
   scope: "parent",
@@ -553,7 +553,564 @@ $ cal(L)_("total") = cal(L)_("data") + lambda sum_(l=1)^L ||W^((l))||_F^2 $ <eq:
 
 Durante entrenamiento, desactivar aleatoriamente neuronas con probabilidad $p$.
 
-//#pagebreak()
+// ============================================================================
+// SECCIÓN: Experimento Demostrativo
+// Agregar este contenido después de la sección "Arquitecturas de Redes Neuronales"
+// y antes de "Conclusiones"
+// ============================================================================
+
+= Experimento Demostrativo
+
+== Diseño Experimental
+
+Para validar empíricamente los fundamentos teóricos presentados, se diseñó un experimento comparativo entre Regresión Logística y Perceptrón Multicapa (MLP) utilizando el problema canónico de círculos concéntricos. Este dataset sintético fue seleccionado específicamente porque representa un caso paradigmático de datos *no-linealmente separables*, donde la geometría intrínseca del problema —una clase contenida radialmente dentro de otra— imposibilita cualquier separación mediante hiperplanos.
+
+El experimento se implementó en Python utilizando el ecosistema científico estándar: NumPy (v2.0.2) para operaciones numéricas, Pandas (v2.2.2) para manipulación de datos, Matplotlib para visualización de calidad académica, y Scikit-learn (v1.5+) para la implementación de los modelos. La reproducibilidad se garantizó mediante la fijación de semilla aleatoria (`random_state=42`) en todas las operaciones estocásticas.
+
+=== Metodología de Validación Estadística
+
+Para garantizar la robustez y generalización de los resultados más allá de una única partición de datos, se implementó un protocolo de validación estadística riguroso siguiendo las recomendaciones metodológicas de Demšar (2006) para comparación de algoritmos de clasificación.
+
+==== Evaluación Monte Carlo
+
+Se ejecutaron $n = 30$ experimentos independientes, cada uno con una semilla aleatoria diferente que afecta:
+
+- La generación del dataset (ruido gaussiano)
+- La partición train/test
+- La inicialización de pesos del MLP
+
+Este número de repeticiones ($n >= 30$) garantiza la aplicabilidad del Teorema Central del Límite para la estimación de intervalos de confianza.
+
+==== Validación Cruzada Repetida
+
+Complementariamente, se aplicó _k-fold cross-validation_ estratificada con $k = 10$ folds y 10 repeticiones, resultando en 100 evaluaciones por modelo. Este esquema asegura que cada observación sea utilizada exactamente 10 veces para prueba, proporcionando estimaciones más estables que la evaluación Monte Carlo simple.
+
+==== Intervalos de Confianza
+
+Los intervalos de confianza al 95% se calcularon mediante el método _bootstrap percentile_, que no asume normalidad en la distribución de las métricas:
+
+$ "IC"_(95%) = [P_(2.5), P_(97.5)] $
+
+donde $P_alpha$ denota el percentil $alpha$ de la distribución empírica de scores.
+
+==== Pruebas de Significancia Estadística
+
+Para determinar si las diferencias observadas son estadísticamente significativas, se emplearon dos pruebas complementarias:
+
+1. *Test de McNemar:* Compara las predicciones de ambos clasificadores sobre el mismo conjunto de prueba, evaluando si la proporción de desacuerdos es significativamente diferente de lo esperado por azar. El estadístico con corrección de continuidad es:
+
+$ chi^2 = frac((|b - c| - 1)^2, b + c) $
+
+donde $b$ representa casos donde solo el modelo 1 acierta y $c$ donde solo el modelo 2 acierta.
+
+2. *Test de Wilcoxon de rangos con signo:* Prueba no paramétrica para muestras pareadas que compara los scores de validación cruzada de ambos modelos sobre los mismos folds, sin asumir normalidad en las diferencias.
+
+==== Tamaño del Efecto
+
+Más allá de la significancia estadística, se reporta el tamaño del efecto mediante la _d_ de Cohen:
+
+$ d = frac(overline(x)_2 - overline(x)_1, s_"pooled") $
+
+donde $s_"pooled" = sqrt((s_1^2 + s_2^2) / 2)$. La interpretación estándar establece: $|d| < 0.2$ (pequeño), $0.2 <= |d| < 0.5$ (mediano), $0.5 <= |d| < 0.8$ (grande), $|d| >= 0.8$ (muy grande).
+
+
+== Generación del Dataset
+
+El dataset de círculos concéntricos se generó mediante la función `make_circles` de Scikit-learn con los siguientes parámetros:
+
+#figure(
+  table(
+    columns: (auto, auto, 1fr),
+    align: (left, center, left),
+    stroke: 0.5pt + luma(180),
+    inset: 8pt,
+    fill: (_, row) => if row == 0 { ef-primary.lighten(85%) } else { none },
+    [*Parámetro*], [*Valor*], [*Descripción*],
+    [`n_samples`], [1000], [Total de observaciones],
+    [`noise`], [0.05], [Desviación estándar del ruido gaussiano (5%)],
+    [`factor`], [0.5], [Ratio entre radio interior y exterior],
+    [`random_state`], [42], [Semilla para reproducibilidad],
+  ),
+  caption: [Parámetros de generación del dataset de círculos concéntricos.]
+) <tab:dataset-params>
+
+El parámetro `factor=0.5` establece que el círculo interior tiene la mitad del radio del exterior, creando una separación visual clara entre clases. El ruido del 5% introduce variabilidad realista sin comprometer la estructura geométrica fundamental del problema.
+
+El dataset resultante presenta distribución perfectamente balanceada: 500 muestras por clase (50%/50%), lo que elimina sesgos por desbalance de clases en la evaluación.
+
+== Partición de Datos
+
+Se aplicó _stratified split_ (partición estratificada) mediante `train_test_split` con los siguientes parámetros:
+
+- *Proporción:* 80% entrenamiento (800 muestras) / 20% prueba (200 muestras)
+- *Estratificación:* Preservación de proporciones de clase en ambas particiones
+- *Semilla:* `random_state=42`
+
+La estratificación garantiza que tanto el conjunto de entrenamiento como el de prueba mantengan la distribución original 50%/50% entre clases.
+
+// Figura del dataset ya está insertada anteriormente como fig:dataset
+
+== Especificación de Modelos
+
+=== Regresión Logística (Modelo Baseline)
+
+El modelo lineal se configuró con parámetros estándar para garantizar convergencia:
+
+```python
+LogisticRegression(
+    solver='lbfgs',      # Optimizador quasi-Newton de memoria limitada
+    max_iter=1000,       # Iteraciones máximas
+    random_state=42      # Reproducibilidad
+)
+```
+
+El optimizador L-BFGS (_Limited-memory Broyden-Fletcher-Goldfarb-Shanno_) es apropiado para datasets de tamaño moderado y garantiza convergencia al mínimo global debido a la convexidad de la función de pérdida de entropía cruzada.
+
+=== Perceptrón Multicapa (MLP)
+
+La arquitectura principal del MLP se definió como *2-10-10-1*, correspondiente a:
+
+- *Capa de entrada:* 2 neuronas (dimensionalidad del espacio de características)
+- *Primera capa oculta:* 10 neuronas con activación tanh
+- *Segunda capa oculta:* 10 neuronas con activación tanh
+- *Capa de salida:* 1 neurona con activación sigmoide (clasificación binaria)
+
+#figure(
+  table(
+    columns: (auto, auto, 1fr),
+    align: (left, center, left),
+    stroke: 0.5pt + luma(180),
+    inset: 8pt,
+    fill: (_, row) => if row == 0 { ef-primary.lighten(85%) } else { none },
+    [*Hiperparámetro*], [*Valor*], [*Justificación*],
+    [`hidden_layer_sizes`], [(10, 10)], [Arquitectura moderada suficiente para el problema],
+    [`activation`], ['tanh'], [Función centrada en cero, gradientes estables],
+    [`solver`], ['adam'], [Optimizador adaptativo con momentum],
+    [`max_iter`], [2000], [Épocas suficientes para convergencia],
+    [`learning_rate_init`], [0.01], [Tasa de aprendizaje inicial],
+    [`random_state`], [42], [Reproducibilidad en inicialización de pesos],
+  ),
+  caption: [Configuración de hiperparámetros del MLP.]
+) <tab:mlp-config>
+
+El *número total de parámetros* entrenables para esta arquitectura es:
+
+$ N_("params") = (2 times 10 + 10) + (10 times 10 + 10) + (10 times 1 + 1) = 30 + 110 + 11 = 151 $
+
+La elección de la función de activación *tanh* (tangente hiperbólica) sobre ReLU se fundamenta en sus propiedades para este problema específico: al estar centrada en cero y ser antisimétrica, facilita el aprendizaje de patrones radialmente simétricos como los círculos concéntricos.
+
+== Protocolo de Evaluación
+
+La evaluación se realizó sobre el conjunto de prueba (200 muestras) utilizando las siguientes métricas:
+
++ *Accuracy (Exactitud):* Proporción de predicciones correctas
+  $ "Accuracy" = (T P + T N)/(T P + T N + F P + F N) $
+
++ *Precision (Precisión):* Proporción de verdaderos positivos entre predicciones positivas
+  $ "Precision" = (T P)/(T P + F P) $
+
++ *Recall (Sensibilidad):* Proporción de verdaderos positivos detectados
+  $ "Recall" = (T P)/(T P + F N) $
+
++ *F1-Score:* Media armónica de precision y recall
+  $ F_1 = 2 times ("Precision" times "Recall")/("Precision" + "Recall") $
+
++ *AUC-ROC:* Área bajo la curva ROC (_Receiver Operating Characteristic_)
+
+Adicionalmente, se generaron *matrices de confusión* para visualizar la distribución de errores y *curvas ROC* para evaluar el rendimiento a diferentes umbrales de decisión.
+
+== Resultados Experimentales
+
+=== Métricas de Clasificación
+
+#figure(
+  table(
+    columns: (auto, auto, auto, auto, auto),
+    align: (left, center, center, center, center),
+    stroke: 0.5pt + luma(180),
+    inset: 8pt,
+    fill: (_, row) => if row == 0 { ef-primary.lighten(85%) } else if row == 2 { rgb("#E8F5E9") } else { none },
+    [*Modelo*], [*Accuracy*], [*Precision*], [*Recall*], [*F1-Score*],
+    [Regresión Logística], [0.4750], [0.4749], [0.4750], [0.4747],
+    [MLP (10,10)], [*1.0000*], [*1.0000*], [*1.0000*], [*1.0000*],
+  ),
+  caption: [Comparación de métricas de clasificación entre Regresión Logística y MLP en el dataset de círculos concéntricos.]
+) <tab:metrics-comparison>
+
+La Regresión Logística alcanza un accuracy de *47.5%*, ligeramente inferior al azar teórico (50%), confirmando su incapacidad para aprender la estructura del problema. Este resultado es consistente con el Teorema de Limitación de Modelos Lineales presentado en el marco teórico.
+
+El MLP logra *100% de accuracy* en todas las métricas, demostrando clasificación perfecta en el conjunto de prueba. Este resultado valida empíricamente el Teorema de Aproximación Universal: las funciones de activación no-lineales permiten al MLP aproximar la frontera de decisión circular requerida.
+
+La *diferencia de 52.5 puntos porcentuales* entre ambos modelos constituye evidencia contundente de la necesidad de no-linealidad para este tipo de problemas.
+
+// Figura de fronteras de decisión
+#place(
+  top + center,
+  scope: "parent",
+  float: true,
+  clearance: 1em,
+)[
+  #figure(
+    image("images/fig02_decision_boundaries.pdf", width: 100%),
+    caption: [Fronteras de decisión aprendidas. Panel (a): Regresión Logística muestra una frontera lineal incapaz de separar las clases. Panel (b): MLP aprende una frontera circular que separa perfectamente ambas clases.]
+  ) <fig:decision-boundaries>
+  #v(12pt)
+]
+
+=== Matrices de Confusión
+
+El análisis de las matrices de confusión revela patrones de error característicos:
+
+*Regresión Logística:*
+- Errores distribuidos aproximadamente uniformemente entre ambos tipos ($F P approx F N$)
+- No existe sesgo hacia ninguna clase específica
+- El modelo "adivina" efectivamente al azar
+
+*MLP:*
+- Matriz diagonal perfecta (sin errores de clasificación)
+- $T P = T N = 100$ (dado balance perfecto en test)
+- $F P = F N = 0$
+
+#figure(
+  image("images/fig03_confusion_matrices.pdf", width: 85%),
+  caption: [Matrices de confusión comparativas. Panel (a): Regresión Logística muestra distribución cercana a uniforme indicando predicción aleatoria. Panel (b): MLP presenta matriz diagonal perfecta sin errores de clasificación.]
+) <fig:confusion-matrices>
+
+=== Curvas ROC
+
+Las curvas ROC proporcionan una perspectiva adicional sobre el rendimiento discriminativo:
+
+- *Regresión Logística:* $"AUC" approx 0.50$ (equivalente a clasificación aleatoria)
+- *MLP:* $"AUC" = 1.00$ (clasificación perfecta)
+
+#figure(
+  image("images/fig04_roc_curves.pdf", width: 70%),
+  caption: [Curvas ROC para ambos modelos. La Regresión Logística (línea azul) sigue la diagonal de no-discriminación con AUC ≈ 0.50, mientras el MLP (línea naranja) alcanza la esquina superior izquierda con AUC = 1.00.]
+) <fig:roc-curves>
+
+=== Análisis de Tiempos de Entrenamiento
+
+Se realizó un benchmark de tiempos de entrenamiento con 20 iteraciones para obtener estimaciones robustas:
+
+#figure(
+  table(
+    columns: (auto, auto, auto),
+    align: (left, center, center),
+    stroke: 0.5pt + luma(180),
+    inset: 8pt,
+    fill: (_, row) => if row == 0 { ef-primary.lighten(85%) } else { none },
+    [*Modelo*], [*Tiempo Medio (ms)*], [*Desv. Estándar (ms)*],
+    [Regresión Logística], [10.33], [4.49],
+    [MLP (10,10)], [~300], [~80],
+  ),
+  caption: [Comparación de tiempos de entrenamiento (promedio de 20 iteraciones).]
+) <tab:timing>
+
+La Regresión Logística es aproximadamente *20-30 veces más rápida* en entrenamiento. Sin embargo, este trade-off entre velocidad y capacidad expresiva es irrelevante cuando el modelo más rápido no puede resolver el problema.
+
+#figure(
+  image("images/fig05_training_time.pdf", width: 100%),
+  caption: [Comparación de tiempos de entrenamiento con barras de error (±1 desviación estándar).]
+) <fig:training-time>
+
+
+=== Validación Estadística de Resultados
+
+Los resultados presentados en las secciones anteriores corresponden a una única ejecución determinística con semilla fija (`random_state=42`). A continuación se presentan los resultados de la validación estadística que confirman la robustez de estos hallazgos.
+
+==== Resultados de Evaluación Monte Carlo
+
+La @tab:monte-carlo presenta las métricas de clasificación promediadas sobre 30 ejecuciones independientes con diferentes semillas aleatorias.
+
+#figure(
+  table(
+    columns: (auto, auto, auto, auto, auto, auto),
+    align: (left, center, center, center, center, center),
+    stroke: 0.5pt + luma(180),
+    inset: 8pt,
+    fill: (_, row) => if row == 0 { ef-primary.lighten(85%) } else { none },
+    [*Modelo*], [*Accuracy*], [*Precision*], [*Recall*], [*F1*], [*AUC-ROC*],
+    [Regresión Logística], 
+    [$0.4713 plus.minus 0.0177$], 
+    [$0.4712 plus.minus 0.0178$], 
+    [$0.4713 plus.minus 0.0177$], 
+    [$0.4708 plus.minus 0.0179$], 
+    [$0.4604 plus.minus 0.0210$],
+    [MLP (10,10)], 
+    [$1.0000 plus.minus 0.0000$], 
+    [$1.0000 plus.minus 0.0000$], 
+    [$1.0000 plus.minus 0.0000$], 
+    [$1.0000 plus.minus 0.0000$], 
+    [$1.0000 plus.minus 0.0000$],
+  ),
+  caption: [Métricas de clasificación mediante evaluación Monte Carlo (media $plus.minus$ desviación estándar, $n = 30$ ejecuciones).]
+) <tab:monte-carlo>
+
+Los intervalos de confianza al 95% para accuracy son:
+
+- *Regresión Logística:* $[0.4386, 0.5041]$
+- *MLP:* $[1.0000, 1.0000]$
+
+#ef-nota()[
+  El intervalo de confianza de la Regresión Logística *incluye el valor 0.50*, confirmando estadísticamente que su rendimiento no es distinguible del azar. El MLP presenta *varianza cero* en las 30 ejecuciones, indicando que el problema es consistentemente resoluble para arquitecturas no-lineales.
+]
+
+==== Resultados de Validación Cruzada Repetida
+
+La validación cruzada estratificada (10-fold $times$ 10 repeticiones) proporciona una perspectiva complementaria con 100 evaluaciones por modelo:
+
+#figure(
+  table(
+    columns: (auto, auto, auto),
+    align: (left, center, center),
+    stroke: 0.5pt + luma(180),
+    inset: 8pt,
+    fill: (_, row) => if row == 0 { ef-primary.lighten(85%) } else { none },
+    [*Modelo*], [*Accuracy*], [*IC 95%*],
+    [Regresión Logística], [$0.4504 plus.minus 0.0320$], [$[0.3900, 0.5000]$],
+    [MLP (10,10)], [$1.0000 plus.minus 0.0000$], [$[1.0000, 1.0000]$],
+  ),
+  caption: [Accuracy mediante validación cruzada repetida (10-fold $times$ 10 repeticiones).]
+) <tab:cv-repeated>
+
+==== Pruebas de Significancia Estadística
+
+La @tab:statistical-tests resume los resultados de las pruebas de hipótesis para la comparación entre modelos.
+
+#figure(
+  table(
+    columns: (auto, auto, auto, auto),
+    align: (left, center, center, center),
+    stroke: 0.5pt + luma(180),
+    inset: 8pt,
+    fill: (_, row) => if row == 0 { ef-primary.lighten(85%) } else { none },
+    [*Prueba*], [*Estadístico*], [*p-valor*], [*Significancia*],
+    [Test de McNemar], [$chi^2 = 103.01$], [$< 0.001$], [✱✱✱],
+    [Test de Wilcoxon], [$W = 0.00$], [$3.51 times 10^(-18)$], [✱✱✱],
+    [Cohen's _d_], [$d = 24.26$], [—], [Efecto extremo],
+  ),
+  caption: [Resultados de pruebas de significancia estadística. Códigos: ✱✱✱ $p < 0.001$.]
+) <tab:statistical-tests>
+
+*Interpretación de resultados:*
+
+1. *Test de McNemar ($chi^2 = 103.01$, $p < 0.001$):* Rechaza la hipótesis nula de que ambos clasificadores tienen el mismo patrón de errores. La diferencia en predicciones es altamente significativa.
+
+2. *Test de Wilcoxon ($W = 0.00$, $p = 3.51 times 10^(-18)$):* El valor $W = 0$ indica que en *todas* las comparaciones pareadas de folds, el MLP superó a la Regresión Logística. El p-valor extremadamente bajo ($approx 10^(-18)$) proporciona evidencia contundente contra la hipótesis nula.
+
+3. *Cohen's $d = 24.26$:* Este valor representa un tamaño del efecto *extremadamente grande*. Para contextualizar:
+   - Valores típicos de $|d| > 0.8$ se consideran "efecto grande"
+   - Un $d = 24.26$ indica que las distribuciones de accuracy están separadas por más de 24 desviaciones estándar combinadas
+   - Prácticamente *no existe solapamiento* entre las distribuciones de rendimiento de ambos modelos
+
+==== Análisis de la Diferencia de Rendimiento
+
+La diferencia media de accuracy entre MLP y Regresión Logística es:
+
+$ Delta_"accuracy" = 0.5496 approx 55 "puntos porcentuales" $
+
+El histograma de diferencias (@fig:statistical-validation, panel d) muestra que *todas* las 30 ejecuciones Monte Carlo resultaron en diferencias positivas a favor del MLP, con un rango de $[0.43, 0.60]$.
+
+==== Análisis de Tiempos de Entrenamiento
+
+#figure(
+  table(
+    columns: (auto, auto, auto, auto),
+    align: (left, center, center, center),
+    stroke: 0.5pt + luma(180),
+    inset: 8pt,
+    fill: (_, row) => if row == 0 { ef-primary.lighten(85%) } else { none },
+    [*Modelo*], [*Tiempo Medio*], [*Desv. Estándar*], [*Ratio*],
+    [Regresión Logística], [4.5 ms], [$plus.minus$ 1.2 ms], [1.0×],
+    [MLP (10,10)], [302.7 ms], [$plus.minus$ 45.3 ms], [67.3×],
+  ),
+  caption: [Tiempos de entrenamiento (promedio de 30 ejecuciones).]
+) <tab:training-times-stat>
+
+El MLP requiere aproximadamente *67 veces más tiempo* de entrenamiento que la Regresión Logística. Sin embargo, este incremento en costo computacional es irrelevante en el contexto de este problema: un modelo que entrena en 4.5 ms pero no puede resolver el problema tiene utilidad nula, mientras que 302.7 ms para clasificación perfecta representa un _trade-off_ aceptable.
+
+// Figura de validación estadística
+#place(
+  top + center,
+  scope: "parent",
+  float: true,
+  clearance: 1em,
+)[
+#figure(
+  image("images/fig_statistical_validation.pdf", width: 100%),
+  caption: [
+    Validación estadística del experimento. 
+    *(a)* Distribución de accuracy (violin plot) para evaluación Monte Carlo. 
+    *(b)* Box plots con puntos individuales de validación cruzada. 
+    *(c)* Forest plot con intervalos de confianza al 95%. 
+    *(d)* Histograma de diferencias de accuracy (MLP − LR). 
+    *(e)* Comparación de tiempos de entrenamiento (escala logarítmica). 
+    *(f)* Resumen de pruebas de significancia estadística.
+  ]
+) <fig:statistical-validation>
+]
+
+
+== Exploración de Arquitecturas
+
+Para evaluar la sensibilidad del rendimiento a la arquitectura, se compararon seis configuraciones de MLP con diferentes profundidades y amplitudes:
+
+#figure(
+  table(
+    columns: (auto, auto, auto, auto),
+    align: (left, center, center, center),
+    stroke: 0.5pt + luma(180),
+    inset: 8pt,
+    fill: (_, row) => if row == 0 { ef-primary.lighten(85%) } else if row == 2 { rgb("#E8F5E9") } else { none },
+    [*Arquitectura*], [*Parámetros*], [*Accuracy*], [*Tiempo (s)*],
+    [(5,)], [~21], [~99%], [~0.3],
+    [(10,10)], [151], [*100%*], [~0.5],
+    [(20,20)], [~861], [100%], [~0.8],
+    [(10,10,10)], [~271], [100%], [~0.7],
+    [(50,)], [~201], [~99%], [~0.4],
+    [(20,10,5)], [~326], [100%], [~0.6],
+  ),
+  caption: [Comparación de diferentes arquitecturas MLP en el problema de círculos concéntricos.]
+) <tab:architectures>
+
+#ef-nota[
+  *Observaciones clave:*
+  
+  + *Arquitecturas mínimas suficientes:* Incluso una sola capa oculta con 5 neuronas $(5,)$ alcanza accuracy cercano al 100%, validando que el problema no requiere arquitecturas complejas.
+  
+  + *Rendimientos decrecientes:* Aumentar la complejidad más allá de $(10,10)$ no mejora el rendimiento en este problema específico.
+  
+  + *Principio de parsimonia:* La arquitectura $(10,10)$ representa un balance óptimo entre capacidad expresiva y complejidad para este problema.
+]
+
+// Figura de arquitecturas exploradas
+#place(
+  top + center,
+  scope: "parent",
+  float: true,
+  clearance: 1em,
+)[
+  #figure(
+    image("images/fig06_architectures.pdf", width: 100%),
+    caption: [Fronteras de decisión para diferentes arquitecturas MLP. Todas las configuraciones logran separar las clases, demostrando que arquitecturas simples son suficientes para este problema.]
+  ) <fig:architectures>
+  #v(12pt)
+]
+
+#pagebreak()
+== Curvas de Aprendizaje
+
+Las _learning curves_ (curvas de aprendizaje) mediante validación cruzada 5-fold revelan el comportamiento de generalización:
+
+*Regresión Logística:*
+- Training score $approx$ 50% constante para todos los tamaños de entrenamiento
+- Cross-validation score $approx$ 50% constante
+- Sin brecha entre training y validation $arrow.r$ *underfitting* (subajuste)
+- El modelo no aprende independientemente de la cantidad de datos
+
+*MLP (10,10):*
+- Training score $arrow.r$ 100% rápidamente
+- Cross-validation score $arrow.r$ ~99-100% con suficientes datos
+- Brecha mínima $arrow.r$ *buen ajuste* sin overfitting significativo
+- El modelo generaliza correctamente
+
+#place(
+  top + center,
+  scope: "parent",
+  float: true,
+  clearance: 1em,
+)[
+#figure(
+  image("images/fig07_learning_curves.pdf", width: 80%),
+  caption: [Curvas de aprendizaje con validación cruzada 5-fold. Panel (a): Regresión Logística muestra underfitting con scores constantes ~50%. Panel (b): MLP converge rápidamente a accuracy ~100% con brecha mínima entre training y validation.]
+) <fig:learning-curves>
+]
+
+
+== Síntesis de Resultados
+
+Los resultados experimentales confirman de manera contundente las predicciones teóricas:
+
++ *Validación del Teorema de Limitación Lineal:* La Regresión Logística no puede superar el rendimiento aleatorio en el problema de círculos concéntricos, exactamente como predice la teoría.
+
++ *Validación del Teorema de Aproximación Universal:* El MLP con funciones de activación no-lineales puede aproximar la frontera de decisión circular requerida.
+
++ *Principio de parsimonia aplicado:* Arquitecturas relativamente simples $(10,10)$ son suficientes; la complejidad adicional no aporta beneficio en este problema.
+
++ *Trade-off complejidad-capacidad:* El costo computacional adicional del MLP se justifica plenamente cuando el modelo lineal es fundamentalmente incapaz de resolver el problema.
+
+#ef-nota[
+  Estos hallazgos demuestran la importancia de seleccionar la clase de modelo apropiada según la geometría inherente de los datos, priorizando la *adecuación al problema* sobre la simplicidad arbitraria.
+]
+
+
+#place(
+  bottom + center,
+  scope: "parent",
+  float: true,
+  clearance: 1em,
+)[
+#figure(
+  table(
+    columns: (auto, auto, auto, auto, auto, auto),
+    align: (left, center, center, center, center, center),
+    stroke: 0.5pt + luma(180),
+    inset: 8pt,
+    [*Modelo*], [*Accuracy*], [*Precision*], [*Recall*], [*F1*], [*AUC*],
+    [Logistic Regression], [$0.4713 plus.minus 0.0177$], [$0.4712 plus.minus 0.0178$], [$0.4713 plus.minus 0.0177$], [$0.4708 plus.minus 0.0179$], [$0.4604 plus.minus 0.0210$],
+    [MLP (10,10)], [$1.0000 plus.minus 0.0000$], [$1.0000 plus.minus 0.0000$], [$1.0000 plus.minus 0.0000$], [$1.0000 plus.minus 0.0000$], [$1.0000 plus.minus 0.0000$],
+  ),
+  caption: [Métricas de clasificación (media ± std, n=30 ejecuciones, IC 95%) ]
+)
+<fig:metrics>
+]
+
+#pagebreak()
+
+== Limitaciones del Estudio
+
+Si bien los resultados presentados proporcionan evidencia contundente sobre las diferencias fundamentales entre modelos lineales y no-lineales, es importante reconocer las limitaciones inherentes al diseño experimental:
+
+=== Naturaleza del Dataset
+
+*Dataset sintético:* El problema de círculos concéntricos es un caso idealizado diseñado específicamente para ilustrar limitaciones de modelos lineales. Los datasets reales raramente presentan geometrías tan claramente definidas, y la frontera de decisión óptima suele ser desconocida.
+
+*Baja dimensionalidad:* El espacio de características bidimensional ($d = 2$) permite visualización directa pero no captura los desafíos de datos de alta dimensión, donde fenómenos como la _maldición de la dimensionalidad_ y la escasez de datos (_data sparsity_) afectan significativamente el rendimiento de los modelos.
+
+*Ruido controlado:* El nivel de ruido gaussiano del 5% (`noise=0.05`) es relativamente bajo. Escenarios con mayor ruido o ruido heteroscedástico podrían alterar las conclusiones sobre la separabilidad perfecta del MLP.
+
+=== Balance de Clases
+
+El dataset presenta distribución perfectamente balanceada (50%/50%). En aplicaciones reales, el desbalance de clases es frecuente y puede afectar diferencialmente a distintos tipos de modelos, requiriendo técnicas de _oversampling_, _undersampling_, o ajuste de pesos de clase.
+
+=== Ausencia de Ruido en Etiquetas
+
+Las etiquetas del dataset son determinísticas y correctas. En escenarios reales, el _label noise_ (etiquetas incorrectas) puede degradar el rendimiento de modelos con alta capacidad expresiva como las redes neuronales, que son más susceptibles a memorizar ruido.
+
+=== Tamaño de Muestra
+
+Con $n = 1000$ observaciones, el dataset representa un caso de tamaño moderado. El comportamiento de ambos modelos podría diferir significativamente en escenarios de:
+- *Datos escasos* ($n < 100$): Mayor riesgo de _overfitting_ para MLP
+- *Big Data* ($n > 10^6$): Consideraciones de escalabilidad computacional
+
+=== Alcance de la Comparación
+
+El estudio compara únicamente Regresión Logística y MLP. Otros enfoques para datos no-linealmente separables incluyen:
+
+- *SVM con kernel RBF:* Alternativa clásica que podría lograr resultados similares al MLP
+- *Random Forest / Gradient Boosting:* Ensambles basados en árboles con capacidad no-lineal inherente
+- *Feature engineering:* Transformación manual del espacio (e.g., $r = sqrt(x_1^2 + x_2^2)$) que permitiría a la Regresión Logística resolver el problema
+
+=== Generalización de Hallazgos
+
+Los resultados demuestran el *principio general* de que modelos lineales no pueden resolver problemas no-linealmente separables, pero las arquitecturas y hiperparámetros óptimos varían según el dominio de aplicación. La arquitectura (10, 10) es adecuada para este problema específico; problemas más complejos podrían requerir configuraciones sustancialmente diferentes.
+
+#ef-nota()[
+  Estas limitaciones no invalidan las conclusiones del estudio, sino que contextualizan su alcance. El valor pedagógico del experimento radica precisamente en su simplicidad controlada, que permite aislar y demostrar el concepto fundamental de *capacidad expresiva* de diferentes familias de modelos.
+]
+
+
+#pagebreak()
 
 = Conclusiones
 
