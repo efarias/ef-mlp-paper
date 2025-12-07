@@ -790,30 +790,32 @@ Las curvas ROC proporcionan una perspectiva adicional sobre el rendimiento discr
 
 === Análisis de Tiempos de Entrenamiento
 
-Se realizó un benchmark de tiempos de entrenamiento con 20 iteraciones para obtener estimaciones robustas:
+Se realizó un benchmark de tiempos de entrenamiento ejecutando 20 iteraciones independientes para cada modelo, precedidas por 3 iteraciones de calentamiento (_warmup_) para estabilizar la caché del procesador. Los tiempos de ejecución absolutos dependen de factores externos al algoritmo —carga del sistema, estado de la caché y asignación de memoria— por lo que pueden variar entre ejecuciones. Los valores reportados corresponden a una ejecución representativa; lo relevante para la comparación es la _diferencia de orden de magnitud_ entre ambos modelos.
 
 #figure(
   table(
-    columns: (auto, auto, auto),
-    align: (left, center, center),
+    columns: (auto, auto, auto, auto, auto),
+    align: (left, center, center, center, center),
     stroke: 0.5pt + luma(180),
     inset: 8pt,
     fill: (_, row) => if row == 0 { ef-primary.lighten(85%) } else { none },
-    [*Modelo*], [*Tiempo Medio (ms)*], [*Desv. Estándar (ms)*],
-    [Regresión Logística], [10.33], [4.49],
-    [MLP (10,10)], [~300], [~80],
+    [*Modelo*], [*Media (ms)*], [*Desv. Est. (ms)*], [*CV (%)*], [*Mediana (ms)*],
+    [Regresión Logística], [3.86], [1.86], [48.3], [3.45],
+    [MLP (10,10)], [1072.51], [135.58], [12.6], [993.18],
   ),
-  caption: [Comparación de tiempos de entrenamiento (promedio de 20 iteraciones).]
+  caption: [Tiempos de entrenamiento (20 iteraciones con 3 de warmup). CV = Coeficiente de Variación.]
 ) <tab:timing>
 
-La Regresión Logística es aproximadamente *20-30 veces más rápida* en entrenamiento. Sin embargo, este trade-off entre velocidad y capacidad expresiva es irrelevante cuando el modelo más rápido no puede resolver el problema.
+El elevado coeficiente de variación de la Regresión Logística (48.3%) refleja la sensibilidad de mediciones en el rango de milisegundos a fluctuaciones del sistema operativo; en contraste, el MLP muestra mayor estabilidad relativa (CV = 12.6%) dado que su tiempo de ejecución promedia las variaciones sobre un período más extenso.
+
+Como ilustra la @fig:training-time en escala logarítmica, la diferencia en tiempos de entrenamiento abarca aproximadamente *dos órdenes de magnitud* ($approx 10^(2.4)$). La Regresión Logística, al emplear el solver L-BFGS que aprovecha la convexidad del problema de optimización, converge en pocos milisegundos. El MLP, en cambio, requiere múltiples épocas de retropropagación (_backpropagation_) a través de sus capas ocultas hasta alcanzar convergencia, resultando aproximadamente *278 veces más lento*.
 
 #figure(
-  image("images/fig05_training_time.pdf", width: 100%),
-  caption: [Comparación de tiempos de entrenamiento con barras de error (±1 desviación estándar).]
+  image("images/fig05_training_time.pdf", width: 85%),
+  caption: [Comparación de tiempos de entrenamiento en escala logarítmica. Las barras de error representan ±1 desviación estándar sobre 20 iteraciones.]
 ) <fig:training-time>
 
-
+No obstante, este trade-off entre eficiencia computacional y capacidad expresiva resulta irrelevante cuando el modelo más rápido es fundamentalmente incapaz de resolver el problema. En escenarios donde no existe separabilidad lineal —como el dataset de círculos concéntricos— invertir tiempo adicional en un modelo con mayor capacidad representacional no constituye un costo sino una necesidad. Un clasificador que responde en 3 ms pero con accuracy del 50% carece de utilidad práctica frente a uno que requiere ~1 segundo pero alcanza accuracy cercano al 100%.
 === Validación Estadística de Resultados
 
 Los resultados presentados en las secciones anteriores corresponden a una única ejecución determinística con semilla fija (`random_state=42`). A continuación se presentan los resultados de la validación estadística que confirman la robustez de estos hallazgos.
